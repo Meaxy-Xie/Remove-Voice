@@ -39,7 +39,9 @@ def process_music(input_file, output_dir, model_name):
         
         # 加载模型
         print(f"[LOG] 加载模型：{model_name}")
-        model = get_model(model_name)
+        # 使用正确的模型名称
+        actual_model_name = "htdemucs" if model_name == "htdemucs_6sources" else model_name
+        model = get_model(actual_model_name)
         device = "cpu"
         model = model.to(device)
         model.eval()

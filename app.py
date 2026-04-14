@@ -56,7 +56,7 @@ class ProcessingWorker(QThread):
             # 获取模型参数
             model_map = {
                 "htdemucs (推荐)": "htdemucs",
-                "htdemucs_6sources": "htdemucs_6sources",
+                "htdemucs_6sources": "htdemucs",
                 "htdemucs_ft": "htdemucs_ft"
             }
             model_param = model_map.get(self.model_name, "htdemucs")
