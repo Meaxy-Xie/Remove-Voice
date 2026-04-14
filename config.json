@@ -1,0 +1,60 @@
+{
+  "app_name": "AI 人声分离 - 去声伴奏生成器",
+  "version": "1.0.0",
+  "author": "AI Assistant",
+  "supported_formats": [
+    "mp3",
+    "wav",
+    "flac",
+    "m4a",
+    "ogg",
+    "opus"
+  ],
+  "default_model": "htdemucs",
+  "models": {
+    "htdemucs_6sources": {
+      "name": "高精度模型 (6个源)",
+      "description": "最高质量分离，检测：人声、贝司、鼓、吉他、钢琴、其他",
+      "memory_required": "4GB",
+      "processing_time_multiplier": 1.5
+    },
+    "htdemucs": {
+      "name": "快速高质量模型",
+      "description": "平衡质量和速度，检测：人声、贝司、鼓、其他",
+      "memory_required": "2GB",
+      "processing_time_multiplier": 1.0
+    },
+    "demucs": {
+      "name": "标准模型",
+      "description": "标准版本，处理速度最快",
+      "memory_required": "1GB",
+      "processing_time_multiplier": 0.7
+    }
+  },
+  "output_formats": {
+    "mp3": {
+      "codec": "libmp3lame",
+      "quality": "high",
+      "bitrate": "320k",
+      "extension": ".mp3"
+    },
+    "wav": {
+      "codec": "pcm_s16le",
+      "quality": "lossless",
+      "bitrate": "null",
+      "extension": ".wav"
+    }
+  },
+  "ui": {
+    "window_width": 600,
+    "window_height": 500,
+    "theme": "light",
+    "language": "zh_CN"
+  },
+  "processing": {
+    "use_gpu": true,
+    "auto_detect_gpu": true,
+    "max_batch_size": 1,
+    "normalize_output": true
+  }
+}
