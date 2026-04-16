@@ -1,82 +1,74 @@
-# 🎵 AI 人声分离 - 去声伴奏生成器
+# 🎵 AI 人声分离工具 v3
 
-一个简单易用的人声分离软件，使用最新的 **Demucs 模型** 技术，能够从歌曲中自动去除人声，保留高质量的伴奏和和声。
+一个简洁高效的人声分离软件，使用 **Meta Demucs** 深度学习模型，能够从音乐中提取伴奏、去除人声。提供友好的 PyQt5 图形界面，支持多种音频格式。
 
 ## ✨ 功能特性
 
-- 🎯 **高精度人声分离** - 使用 Meta/Facebook 开源的 Demucs AI 模型
-- 🎨 **友好的图形界面** - 简洁直观的 PyQt5 GUI，无需命令行
-- 📁 **支持多格式** - 支持 MP3、WAV、FLAC、M4A 等音频格式
-- 💾 **双格式输出** - 同时生成 MP3（文件小）和 WAV（无损）
-- 🚀 **多个模型选择** - 3 种模型可选，音质和速度可自由权衡
-- 🎵 **保留和声和伴奏** - 智能保留除人声外的所有音频元素
+- 🎯 **高精度分离** - 使用 Meta 开源的 Demucs AI 模型
+- 🖥️ **图形界面** - 简洁直观的 PyQt5 GUI，点击即用
+- 📁 **多格式支持** - 支持 MP3、WAV、FLAC、M4A 等音频格式
+- ⚡ **多模型选择** - 3 种模型可选，质量和速度自由权衡
+- 💾 **WAV + MP3 输出** - 同时生成无损 WAV 和压缩 MP3 格式
 
 ## 📋 系统要求
 
-- **操作系统**：Windows 10/11（推荐 64 位）
-- **Python**：3.9 或更高版本
-- **显存**：GPU 推荐（无 GPU 也可运行，但会较慢）
-- **磁盘空间**：至少 2GB（用于模型和处理）
+- **操作系统**：Windows 10/11（64 位）/ macOS / Linux
+- **Python**：3.10 或更高版本
+- **内存**：8GB+ 推荐
+- **GPU**：NVIDIA GPU 推荐（CUDA 支持），CPU 也可运行但较慢
+- **磁盘**：至少 3GB（模型缓存）
 
-## 🔧 安装步骤
+## 🚀 快速开始
 
-### 1. 安装 Python 依赖
+### 1. 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-如果安装失败，可以逐个安装：
+### 2. 启动应用
 
 ```bash
-pip install PyQt5==5.15.9
-pip install torch==2.0.1 -i https://download.pytorch.org/whl/cu118
-pip install torchaudio==2.0.2
-pip install demucs==4.0.1
-pip install librosa==0.10.0
-pip install soundfile==0.12.1
+python app.py
 ```
 
-### 2. 安装 FFmpeg（用于 MP3 导出）
+### 3. 使用应用
 
-**Windows 方式一：使用 Chocolatey**
+1. 点击 **"选择文件"** 按钮选择音频文件
+2. 选择处理模型（默认推荐 `htdemucs`）
+3. 点击 **"🚀 开始处理"** 开始分离
+4. 处理完成后，伴奏文件保存在输出目录
+
+## ℹ️ 重要提示
+
+### ✅ 支持的音频格式
+- **WAV** - 完全支持（推荐）
+- **MP3/FLAC/M4A** - 需要安装 FFmpeg
+
+### 📦 FFmpeg 安装（可选但推荐）
+
+**Windows Chocolatey：**
 ```bash
 choco install ffmpeg
 ```
 
-**Windows 方式二：手动安装**
-1. 从 [ffmpeg.org](https://ffmpeg.org/download.html) 下载 Windows 版本
+**Windows 手动安装：**
+1. 下载：https://ffmpeg.org/download.html
 2. 解压到 `C:\ffmpeg`
-3. 将 `C:\ffmpeg\bin` 添加到系统环境变量 PATH
+3. 添加 `C:\ffmpeg\bin` 到 PATH 环境变量
 
-验证安装：
+**验证：**
 ```bash
 ffmpeg -version
 ```
 
-## 🚀 使用方法
+## � 模型说明
 
-### 启动应用
-
-```bash
-python main.py
-```
-
-应用窗口会弹出，包含以下步骤：
-
-### 使用步骤
-
-1. **点击 "📁 选择音乐文件"** - 选择你要处理的歌曲
-2. **选择处理模型**
-   - `htdemucs_6sources` (推荐) - 最高质量，处理时长
-   - `htdemucs` - 快速高质量
-   - `demucs` - 标准版本
-3. **选择输出格式**
-   - 双格式 - 同时输出 MP3 和 WAV
-   - 仅 MP3 - 文件较小
-   - 仅 WAV - 无损质量
-4. **点击 "🚀 开始去声"**
-5. **选择输出目录** - 保存伴奏文件
+| 模型 | 质量等级 | 速度 | 显存需求 | 场景 |
+|------|---------|------|---------|------|
+| `htdemucs (推荐)` | ⭐⭐⭐⭐ | 快 | 2GB+ | 日常使用 |
+| `htdemucs_6sources` | ⭐⭐⭐⭐⭐ | 中 | 4GB+ | 高质量需求 |
+| `htdemucs_ft` | ⭐⭐⭐⭐ | 中等 | 3GB+ | 精调版本 |
 
 ## 📊 模型对比
 
@@ -156,15 +148,23 @@ for file in files:
 - 能够保留微妙的音乐元素
 - 自适应不同的音乐风格
 
-## 📝 许可证
+## 📝 项目结构
 
-本项目使用 MIT 许可证。Demucs 模型由 Meta 发布，使用 Creative Commons Attribution 4.0 International 许可证。
+```
+人声分离/
+├── app.py                # 主应用程序 (GUI)
+├── processor.py          # 音源分离处理器
+├── config.json          # 配置文件
+├── requirements.txt     # 依赖列表
+├── README.md           # 本文件
+└── output/             # 输出目录
+```
 
-## 🤝 贡献
+## 📄 许可证
 
-欢迎提交 Issue 和 Pull Request！
+Demucs 模型：[Creative Commons Attribution 4.0 International](https://github.com/facebookresearch/demucs)
 
-## 📚 参考资源
+## 🔗 资源
 
 - [Demucs GitHub](https://github.com/facebookresearch/demucs)
 - [PyQt5 文档](https://www.riverbankcomputing.com/static/Docs/PyQt5/)
@@ -172,8 +172,8 @@ for file in files:
 
 ---
 
-**开发者**：AI Assistant  
-**最后更新**：2024 年  
-**版本**：1.0
+**版本**：3.0  
+**Python**：3.10+  
+**最后更新**：2026 年  
 
-享受高质量的音乐伴奏吧！🎵
+💡 **提示**：首次运行会自动下载 Demucs 模型（~200MB），请耐心等待。

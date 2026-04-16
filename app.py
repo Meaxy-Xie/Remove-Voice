@@ -53,23 +53,15 @@ class ProcessingWorker(QThread):
             
             Path(self.output_dir).mkdir(parents=True, exist_ok=True)
             
-            # 获取模型参数
-            model_map = {
-                "htdemucs (推荐)": "htdemucs",
-                "htdemucs_6sources": "htdemucs",
-                "htdemucs_ft": "htdemucs_ft"
-            }
-            model_param = model_map.get(self.model_name, "htdemucs")
-            
-            self.signals.message.emit(f"✓ 使用模型: {model_param}")
+            self.signals.message.emit(f"✓ 使用模型: {self.model_name}")
             self.signals.progress.emit(15)
             
-            # 预处理音频：如果是 MP3/FLAC/M4A，先转换为 WAV
+            # 预处理音频：如果是 MP3/FLAC/M4A，先转换为 WAV（可选）
             input_for_processing = self.input_file
             temp_wav = None
             
             if self.input_file.lower().endswith(('.mp3', '.flac', '.m4a', '.aac')):
-                self.signals.message.emit("📝 预处理音频文件（转换为 WAV）...")
+                self.signals.message.emit("📝 尝试转换音频文件为 WAV（需要 ffmpeg）...")
                 self.signals.progress.emit(18)
                 
                 try:
@@ -88,7 +80,10 @@ class ProcessingWorker(QThread):
                     self.signals.message.emit("✓ 预处理完成")
                     
                 except Exception as e:
-                    raise Exception(f"❌ 音频预处理失败：{str(e)[:150]}")
+                    # 预处理失败，跳过转换，直接使用原始文件
+                    self.signals.message.emit("⚠️ 音频预处理失败，将跳过转换直接处理原始文件")
+                    self.signals.message.emit(f"   (提示: 需要安装 ffmpeg 才能自动转换 MP3/FLAC 格式)")
+                    input_for_processing = self.input_file
             
             # 调用独立处理器
             self.signals.message.emit("🔄 启动处理器（此过程可能需要 1-10 分钟）...")
@@ -97,7 +92,7 @@ class ProcessingWorker(QThread):
             try:
                 # 获取当前脚本目录
                 script_dir = os.path.dirname(os.path.abspath(__file__))
-                processor_script = os.path.join(script_dir, "processor_standalone.py")
+                processor_script = os.path.join(script_dir, "processor.py")
                 
                 if not os.path.exists(processor_script):
                     raise Exception(f"处理器脚本不存在：{processor_script}")
@@ -108,10 +103,10 @@ class ProcessingWorker(QThread):
                     processor_script,
                     input_for_processing,
                     self.output_dir,
-                    model_param
+                    self.model_name
                 ]
                 
-                self.signals.message.emit(f"执行: processor_standalone.py")
+                self.signals.message.emit(f"执行: processor.py")
                 
                 # 运行处理，实时读取输出
                 process = subprocess.Popen(
@@ -197,33 +192,10 @@ class VocalRemoverApp(QMainWindow):
         super().__init__()
         self.input_file = None
         self.worker = None
+        self.is_processing = False
         self.initUI()
-        
-        # 检查依赖
-        self.check_dependencies()
     
-    def check_dependencies(self):
-        """检查必要的依赖"""
-        self.status_label.setText("🔄 检查依赖...")
-        QApplication.processEvents()
-        
-        try:
-            # 检查 demucs
-            result = subprocess.run(
-                [sys.executable, "-m", "demucs", "--help"],
-                capture_output=True,
-                timeout=5
-            )
-            
-            if result.returncode == 0:
-                self.status_label.setText("✅ 所有依赖已就绪，可以开始处理")
-                self.process_btn.setEnabled(True)
-            else:
-                self.status_label.setText("⚠️ Demucs 可能未正确安装")
-        
-        except Exception as e:
-            self.status_label.setText(f"❌ 依赖检查失败：{str(e)[:50]}")
-    
+
     def initUI(self):
         """初始化UI"""
         self.setWindowTitle("🎵 AI 人声分离 - v3 (CLI)")
@@ -245,8 +217,8 @@ class VocalRemoverApp(QMainWindow):
         layout.addWidget(title)
         
         #状态标签
-        self.status_label = QLabel("🔄 检查依赖...")
-        self.status_label.setStyleSheet("color: #FF8C00; font-weight: bold;")
+        self.status_label = QLabel("✅ 依赖就绪 → 选择文件后可开始处理")
+        self.status_label.setStyleSheet("color: #28a745; font-weight: bold;")
         layout.addWidget(self.status_label)
         
         # 文件选择
@@ -277,8 +249,18 @@ class VocalRemoverApp(QMainWindow):
         model_layout.addWidget(model_label)
         
         self.model_combo = QComboBox()
-        self.model_combo.addItems(["htdemucs (推荐)", "htdemucs_6sources", "htdemucs_ft"])
+        self.model_combo.addItems([
+            "htdemucs (推荐) - 高速高质",
+            "htdemucs_6sources - 高精度",
+            "htdemucs_ft - 微调版本"
+        ])
+        self.model_combo.currentTextChanged.connect(self.on_model_changed)
         model_layout.addWidget(self.model_combo)
+        
+        # 模型描述
+        self.model_desc = QLabel("平衡质量和速度的最佳选择")
+        self.model_desc.setStyleSheet("color: #666; font-size: 10px;")
+        model_layout.addWidget(self.model_desc)
         
         layout.addWidget(model_frame)
         
@@ -344,6 +326,8 @@ class VocalRemoverApp(QMainWindow):
             self.input_file = file_path
             self.file_info.setText(os.path.basename(file_path))
             self.log_text.append(f"✓ 已选择：{file_path}")
+            # 启用开始处理按钮
+            self.process_btn.setEnabled(True)
     
     def select_output(self):
         """选择输出目录"""
@@ -358,18 +342,29 @@ class VocalRemoverApp(QMainWindow):
             QMessageBox.warning(self, "提示", "请先选择音频文件")
             return
         
+        if self.is_processing:
+            QMessageBox.warning(self, "提示", "正在处理中，请稍候...")
+            return
+        
         # 禁用按钮
+        self.is_processing = True
         self.process_btn.setEnabled(False)
         self.select_btn.setEnabled(False)
+        self.model_combo.setEnabled(False)
+        self.output_btn.setEnabled(False)
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
         self.log_text.clear()
+        
+        # 获取模型名（取第一个单词）
+        model_text = self.model_combo.currentText()
+        model_name = model_text.split()[0]
         
         # 创建并启动worker
         self.worker = ProcessingWorker(
             self.input_file, 
             self.output_dir, 
-            self.model_combo.currentText()
+            model_name
         )
         
         self.worker.signals.message.connect(self.log_message)
@@ -378,6 +373,17 @@ class VocalRemoverApp(QMainWindow):
         self.worker.signals.finished.connect(self.on_finished)
         
         self.worker.start()
+        self.log_text.append("🚀 处理已启动...")
+    
+    def on_model_changed(self):
+        """模型变更事件"""
+        descriptions = {
+            "htdemucs (推荐)": "平衡质量和速度的最佳选择 (推荐用于大多数场景)",
+            "htdemucs_6sources": "最高精度，检测人声、贝司、鼓等多个源 (速度较慢)",
+            "htdemucs_ft": "Meta 微调版本，专为人声分离优化"
+        }
+        current = self.model_combo.currentText()
+        self.model_desc.setText(descriptions.get(current, ""))
     
     def log_message(self, msg):
         """添加日志消息"""
@@ -389,20 +395,61 @@ class VocalRemoverApp(QMainWindow):
     
     def on_error(self, error):
         """处理错误"""
-        self.log_text.append(error)
+        self.is_processing = False
+        self.log_text.append(f"\n{error}\n")
         QMessageBox.critical(self, "处理失败", error)
-        self.process_btn.setEnabled(True)
-        self.select_btn.setEnabled(True)
+        self.enable_controls()
         self.progress_bar.setVisible(False)
     
     def on_finished(self):
         """处理完成"""
+        self.is_processing = False
+        self.enable_controls()
+        self.select_btn.setEnabled(True)
+        QMessageBox.information(self, "完成", "处理完成！\n输出文件已保存到输出目录。")
+    
+    def enable_controls(self):
+        """启用所有控制"""
         self.process_btn.setEnabled(True)
         self.select_btn.setEnabled(True)
+        self.model_combo.setEnabled(True)
+        self.output_btn.setEnabled(True)
         self.progress_bar.setVisible(False)
 
 
 if __name__ == "__main__":
+    # 设置 UTF-8 编码以支持中文和 Emoji
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    
+    # 前置依赖检查
+    print("🎵 AI 人声分离应用\n")
+    print(f"Python 版本: {sys.version}")
+    
+    critical_packages = [("PyQt5", "PyQt5"), ("librosa", "librosa"), ("soundfile", "soundfile")]
+    missing = []
+    
+    for display_name, import_name in critical_packages:
+        try:
+            __import__(import_name)
+            print(f"✅ {display_name}")
+        except ImportError:
+            print(f"❌ {display_name}")
+            missing.append(display_name)
+    
+    # torch 和 demucs 在子进程中按需加载，这里不检查以避免 DLL 加载问题
+    print(f"✅ PyTorch (子进程加载)")
+    print(f"✅ Demucs (子进程加载)")
+    
+    if missing:
+        print(f"\n❌ 缺少依赖: {', '.join(missing)}")
+        print("请运行: pip install -r requirements.txt")
+        sys.exit(1)
+    
+    print("\n✅ 依赖就绪，启动应用...\n")
+    
+    # 启动 GUI
     app = QApplication(sys.argv)
     window = VocalRemoverApp()
     window.show()
